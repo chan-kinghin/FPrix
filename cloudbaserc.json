@@ -1,0 +1,30 @@
+{
+  "envId": "{{env.ENV_ID}}",
+  "version": "2.0",
+  "framework": {
+    "name": "costchecker",
+    "plugins": {
+      "api": {
+        "use": "@cloudbase/framework-plugin-container",
+        "inputs": {
+          "serviceName": "costchecker-api",
+          "servicePath": "/",
+          "localPath": "./",
+          "dockerfilePath": "./Dockerfile",
+          "containerPort": 8000,
+          "isPublic": true,
+          "envVariables": {
+            "ENV": "prod",
+            "APP_NAME": "{{env.APP_NAME}}",
+            "DATABASE_URL": "{{env.DATABASE_URL}}",
+            "DEEPSEEK_API_KEY": "{{env.DEEPSEEK_API_KEY}}",
+            "ADMIN_USERNAME": "{{env.ADMIN_USERNAME}}",
+            "ADMIN_PASSWORD": "{{env.ADMIN_PASSWORD}}",
+            "CORS_ORIGINS": "{{env.CORS_ORIGINS}}"
+          }
+        }
+      }
+    }
+  }
+}
+

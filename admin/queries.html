@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>查询监控</title>
+    <link rel="stylesheet" href="/admin/static/css/style.css" />
+  </head>
+  <body>
+    <h1>查询监控</h1>
+    <div>
+      <label>开始日期: <input type="date" id="start_date" /></label>
+      <label>结束日期: <input type="date" id="end_date" /></label>
+      <button onclick="loadQueries()">加载</button>
+      <button onclick="exportCsv()">导出 CSV</button>
+    </div>
+    <table id="tbl">
+      <thead>
+        <tr><th>时间</th><th>查询</th><th>产品</th><th>耗时(ms)</th><th>状态</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <script src="/admin/static/js/main.js"></script>
+    <script>
+      async function loadQueries(){
+        const start = document.getElementById('start_date').value;
+        const end = document.getElementById('end_date').value;
+        const params = new URLSearchParams();
+        if (start) params.append('start_date', start);
+        if (end) params.append('end_date', end);
+        const res = await fetch('/api/analytics/queries?limit=100&'+params.toString(), {headers:{'Accept':'application/json'}});
+        const data = await res.json();
+        const tbody = document.querySelector('#tbl tbody');
+        tbody.innerHTML='';
+        for (const q of data.queries){
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${q.timestamp||''}</td><td>${q.query_text||''}</td><td>${q.selected_product||''}</td><td>${q.execution_time_ms||''}</td><td>${q.success?'success':'error'}</td>`;
+          tr.className = q.success ? 'ok' : 'err';
+          tbody.appendChild(tr);
+        }
+      }
+      function exportCsv(){
+        const rows = [['Time','Query','Product','ExecutionTimeMs','Status']];
+        document.querySelectorAll('#tbl tbody tr').forEach(tr=>{
+          const tds = tr.querySelectorAll('td');
+          rows.push(Array.from(tds).map(td=>`"${td.textContent.replaceAll('"','\"')}"`));
+        });
+        const csv = rows.map(r=>r.join(',')).join('\n');
+        const a = document.createElement('a');
+        a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+        a.download = 'queries.csv';
+        a.click();
+      }
+      setInterval(loadQueries, 30000);
+      loadQueries();
+    </script>
+  </body>
+  </html>
+

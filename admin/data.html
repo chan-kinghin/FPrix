@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>数据质量</title>
+    <link rel="stylesheet" href="/admin/static/css/style.css" />
+  </head>
+  <body>
+    <h1>数据质量</h1>
+    <pre id="status">加载中...</pre>
+    <script>
+      async function load(){
+        try {
+          const res = await fetch('/api/analytics/data_quality');
+          const data = await res.json();
+          const total = data.total_products || 0;
+          const shots = data.products_with_screenshots || 0;
+          const lines = [];
+          lines.push('Database Status');
+          lines.push('==============');
+          lines.push(`Last Updated: ${data.last_updated || 'N/A'}`);
+          lines.push(`Total Products: ${total}`);
+          lines.push(`Products with Screenshots: ${shots} (${total?((shots/total*100).toFixed(1)):'0'}%)`);
+          lines.push('\nProduct Breakdown:');
+          (data.categories||[]).forEach(c=>{
+            lines.push(`- ${c.category||'未知'}: ${c.count} SKUs`);
+          });
+          document.getElementById('status').textContent = lines.join('\n');
+        } catch (e){
+          document.getElementById('status').textContent = 'Failed to load data quality';
+        }
+      }
+      load();
+    </script>
+  </body>
+  </html>

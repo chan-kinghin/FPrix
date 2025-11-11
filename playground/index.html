@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CostChecker Playground</title>
+    <link rel="stylesheet" href="/playground/style.css" />
+  </head>
+  <body>
+    <h1>CostChecker Playground</h1>
+    <div class="bar">
+      <input id="q" type="text" placeholder="输入查询，例如：GT63 A级 定制色" />
+      <button id="run">查询</button>
+    </div>
+    <div id="status"></div>
+
+    <div class="result">
+      <div class="pane">
+        <h3>响应</h3>
+        <pre id="json"></pre>
+      </div>
+      <div class="pane">
+        <h3>截图 + 高亮</h3>
+        <div id="shotWrap" class="shot-wrap">
+          <img id="shot" alt="screenshot" />
+          <div id="overlays"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="confirm" class="confirm"></div>
+
+    <script src="/playground/main.js"></script>
+  </body>
+  </html>
+

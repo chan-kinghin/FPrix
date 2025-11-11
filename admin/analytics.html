@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>统计</title>
+    <link rel="stylesheet" href="/admin/static/css/style.css" />
+  </head>
+  <body>
+    <h1>统计</h1>
+    <div id="cards" class="cards"></div>
+    <h2>Top 10 产品</h2>
+    <ol id="top"></ol>
+    <h2>常见错误</h2>
+    <ul id="errors"></ul>
+    <script>
+      async function load(){
+        const res = await fetch('/api/analytics/stats?days=7');
+        const data = await res.json();
+        const cards = document.getElementById('cards');
+        cards.innerHTML = `
+        <div class="card"><div>总查询</div><div>${data.total_queries}</div></div>
+        <div class="card"><div>成功率</div><div>${(data.success_rate*100).toFixed(1)}%</div></div>
+        <div class="card"><div>平均耗时</div><div>${data.avg_response_time_ms}ms</div></div>`;
+        const top = document.getElementById('top');
+        top.innerHTML = (data.top_products||[]).map((p,i)=>`<li>${p.product_code} - ${p.count} 次</li>`).join('');
+        const errs = document.getElementById('errors');
+        errs.innerHTML = (data.common_errors||[]).map(e=>`<li>${e.error} - ${e.count}</li>`).join('');
+      }
+      load();
+    </script>
+  </body>
+  </html>
+

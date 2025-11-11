@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+
+# Environment
+.env
+
+# OS files
+.DS_Store
+
+# Data and logs
+data/screenshots/
+data/reports/
+data/*.db
+data/*.sqlite
+logs/
+
+# Server process files
+.server_pid
+*.pid
+
+# Source PDFs (too large for git)
+*.pdf
+1. 全系列产品报价表*
+
+# Alembic
+alembic/*.pyc
+alembic/__pycache__/
+
