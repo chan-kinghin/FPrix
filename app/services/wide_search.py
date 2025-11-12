@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from typing import Any, Dict, List, Optional
+import logging
 
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -9,6 +10,8 @@ from sqlalchemy import text
 from app.models import Product
 from app.services.fuzzy_match import normalize_product_code
 from app.services.product_name_matcher import match_product_by_description
+
+logger = logging.getLogger(__name__)
 
 
 DEFAULT_TIER = "C级"
@@ -87,10 +90,12 @@ def detect_wide_query(query: str) -> Optional[WideQueryParams]:
         except Exception:
             pass
 
-    if any(k in q for k in ["最贵", "贵的"]):
+    # Only treat explicit "最贵/最便宜" as Top queries.
+    # Avoid classifying "比 … 贵的/便宜的" as Top when comparison parsing fails.
+    if "最贵" in q:
         params.mode = "top_desc"
         return params
-    if any(k in q for k in ["最便宜", "便宜的"]):
+    if "最便宜" in q:
         params.mode = "top_asc"
         return params
     return None
@@ -153,6 +158,8 @@ def run_wide_search(db: Session, params: WideQueryParams) -> Dict[str, Any]:
             # Find products matching the description
             matches = match_product_by_description(db, params.description_query, threshold=0.70)
             if not matches:
+                logger.warning(f"Description-based match failed: {params.description_query}")
+                logger.debug("Attempted match with threshold=0.70, zero results")
                 return {
                     "status": "error",
                     "error_type": "reference_not_found",
@@ -195,7 +202,7 @@ def run_wide_search(db: Session, params: WideQueryParams) -> Dict[str, Any]:
                        x.price, (x.price - :rp) AS delta
                 FROM products p
                 CROSS JOIN LATERAL (SELECT pick_price(p.product_id, :tier, :color) AS price) AS x
-                WHERE x.price IS NOT NULL{where_cat} AND x.price {comp_op} :rp
+                WHERE x.price IS NOT NULL{where_cat} AND x.price > 0 AND x.price {comp_op} :rp
                 ORDER BY (x.price - :rp) {order_dir}
                 LIMIT :limit
             """
@@ -218,6 +225,17 @@ def run_wide_search(db: Session, params: WideQueryParams) -> Dict[str, Any]:
                 ]
             finally:
                 conn.close()
+
+            # Post-filter any zero/invalid prices defensively and log
+            logger.warning(f"Found {len(rows)} products, filtering zero prices")
+            rows = [r for r in rows if r.get("price", 0) > 0]
+            logger.info(f"After filtering: {len(rows)} products with valid pricing")
+            if not rows:
+                return {
+                    "status": "error",
+                    "error_type": "no_pricing_data",
+                    "message": "No valid pricing data found for the specified criteria.",
+                }
 
             # Build title showing all reference products
             ref_codes_str = ", ".join([info["code"] for info in ref_info])
@@ -252,7 +270,7 @@ def run_wide_search(db: Session, params: WideQueryParams) -> Dict[str, Any]:
                        x.price, (x.price - :rp) AS delta
                 FROM products p
                 CROSS JOIN LATERAL (SELECT pick_price(p.product_id, :tier, :color) AS price) AS x
-                WHERE x.price IS NOT NULL{where_cat} AND x.price {comp_op} :rp
+                WHERE x.price IS NOT NULL{where_cat} AND x.price > 0 AND x.price {comp_op} :rp
                 ORDER BY (x.price - :rp) {order_dir}
                 LIMIT :limit
             """
@@ -274,6 +292,17 @@ def run_wide_search(db: Session, params: WideQueryParams) -> Dict[str, Any]:
             ]
             finally:
                 conn.close()
+
+            # Post-filter any zero/invalid prices defensively and log
+            logger.warning(f"Found {len(rows)} products, filtering zero prices")
+            rows = [r for r in rows if r.get("price", 0) > 0]
+            logger.info(f"After filtering: {len(rows)} products with valid pricing")
+            if not rows:
+                return {
+                    "status": "error",
+                    "error_type": "no_pricing_data",
+                    "message": "No valid pricing data found for the specified criteria.",
+                }
             title = f"比 {ref.product_code} {'更贵' if params.mode=='compare_gt' else '更便宜'}的{params.category or ''}（{params.tier}{params.color}）".strip()
             return _format(rows, {"ref_code": ref.product_code, "ref_price": float(rp)})
 
@@ -283,7 +312,7 @@ def run_wide_search(db: Session, params: WideQueryParams) -> Dict[str, Any]:
             SELECT p.product_code, p.category, p.material_type, p.screenshot_url, x.price
             FROM products p
             CROSS JOIN LATERAL (SELECT pick_price(p.product_id, :tier, :color) AS price) AS x
-            WHERE x.price IS NOT NULL{where_cat}
+            WHERE x.price IS NOT NULL{where_cat} AND x.price > 0
             ORDER BY x.price {order_dir}
             LIMIT :limit
         """
@@ -304,6 +333,16 @@ def run_wide_search(db: Session, params: WideQueryParams) -> Dict[str, Any]:
         ]
         finally:
             conn.close()
+        # Post-filter any zero/invalid prices defensively and log
+        logger.warning(f"Found {len(rows)} products, filtering zero prices")
+        rows = [r for r in rows if r.get("price", 0) > 0]
+        logger.info(f"After filtering: {len(rows)} products with valid pricing")
+        if not rows:
+            return {
+                "status": "error",
+                "error_type": "no_pricing_data",
+                "message": "No valid pricing data found for the specified criteria.",
+            }
         title = f"{'最贵' if params.mode=='top_desc' else '最便宜'}的{params.category or ''}（{params.tier}{params.color}）".strip()
         return _format(rows, {})
 
@@ -312,7 +351,7 @@ def run_wide_search(db: Session, params: WideQueryParams) -> Dict[str, Any]:
             SELECT p.product_code, p.category, p.material_type, p.screenshot_url, x.price
             FROM products p
             CROSS JOIN LATERAL (SELECT pick_price(p.product_id, :tier, :color) AS price) AS x
-            WHERE x.price IS NOT NULL{where_cat} AND x.price BETWEEN :minp AND :maxp
+            WHERE x.price IS NOT NULL{where_cat} AND x.price > 0 AND x.price BETWEEN :minp AND :maxp
             ORDER BY x.price ASC
             LIMIT :limit
         """
@@ -325,6 +364,16 @@ def run_wide_search(db: Session, params: WideQueryParams) -> Dict[str, Any]:
             ]
         finally:
             conn.close()
+        # Post-filter any zero/invalid prices defensively and log
+        logger.warning(f"Found {len(rows)} products, filtering zero prices")
+        rows = [r for r in rows if r.get("price", 0) > 0]
+        logger.info(f"After filtering: {len(rows)} products with valid pricing")
+        if not rows:
+            return {
+                "status": "error",
+                "error_type": "no_pricing_data",
+                "message": "No valid pricing data found for the specified criteria.",
+            }
         title = f"价格 {params.min_price}-{params.max_price} 的{params.category or ''}（{params.tier}{params.color}）".strip()
         return _format(rows, {})
 

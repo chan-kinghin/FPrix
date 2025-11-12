@@ -11,6 +11,7 @@ from app.core.database import get_db
 from app.api.routes.query import router as query_router
 from app.api.routes.screenshots import router as screenshots_router
 from app.api.routes.analytics import router as analytics_router
+from app.api.routes.wework import router as wework_router
 from app.api.routes.admin_static import router as admin_static_router
 
 
@@ -54,6 +55,7 @@ app.include_router(query_router)
 app.include_router(screenshots_router)
 app.include_router(analytics_router)
 app.include_router(admin_static_router)
+app.include_router(wework_router)
 
 # Simple frontend playground (no auth) for quick manual testing
 app.mount("/playground", StaticFiles(directory="playground", html=True), name="playground")

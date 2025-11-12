@@ -284,3 +284,113 @@ Your system now intelligently handles both:
 - **Description-based**: "比 儿童分体简易 Silicone 便宜的"
 
 The implementation is production-ready, fully tested, and backward compatible. Ready for manual testing with your real database!
+
+---
+
+## WeChat Work Integration Roadmap
+
+### Vision: Dual-Interface Architecture
+
+The CostChecker system will support two complementary access methods:
+
+1. **REST API** (current)
+   - Direct HTTP endpoints
+   - For admin dashboard, integrations, and programmatic access
+   - Full backward compatibility maintained
+
+2. **WeChat Work** (planned)
+   - Natural language queries via enterprise chat
+   - Primary interface for end users
+   - Zero training required - familiar chat UX
+   - Reuses existing query engine and business logic
+
+### Integration Approach
+
+**Design Principle**: Add new interface layer WITHOUT modifying core functionality
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    User Interfaces                      │
+├──────────────────────┬──────────────────────────────────┤
+│   REST API (现有)     │   WeChat Work (新增)             │
+│   - Direct HTTP      │   - Chat messages                │
+│   - Admin dashboard  │   - Encrypted callbacks          │
+└──────────┬───────────┴───────────┬──────────────────────┘
+           │                       │
+           └───────────┬───────────┘
+                       ↓
+        ┌──────────────────────────────────┐
+        │   Query Processing Engine (复用)  │
+        │   - product_name_matcher         │
+        │   - wide_search                  │
+        │   - fuzzy_match                  │
+        └──────────────────────────────────┘
+```
+
+### Key Technical Components (Planned)
+
+1. **Message Encryption** (`WXBizMsgCrypt3`)
+   - Official WeChat Work SDK
+   - Handles VerifyURL, DecryptMsg, EncryptMsg
+
+2. **Callback Endpoints** (FastAPI)
+   - GET /wework/callback - URL verification
+   - POST /wework/callback - Message processing
+
+3. **Timeout Handling** (Critical)
+   - Fast queries (< 4s): Passive encrypted reply
+   - Slow queries (≥ 4s): Return 200 empty + active message API
+   - Prevents retry storm (WeChat Work retries 3x on timeout)
+
+4. **Response Formatting**
+   - Convert query results to WeChat-compatible markdown
+   - Support mobile + desktop (basic markdown subset)
+   - Use `<font color="warning">` for emphasis
+
+5. **Idempotency**
+   - Message deduplication by `msgid`
+   - Cache with TTL to handle retries
+
+### Backward Compatibility Guarantee
+
+**No Breaking Changes**:
+- ✅ All existing REST API endpoints unchanged
+- ✅ Admin dashboard fully functional
+- ✅ Database schema unchanged
+- ✅ Query processing logic reused (not modified)
+- ✅ All 55+ tests continue to pass
+- ✅ WeChat Work is purely additive
+
+### Implementation Status
+
+**Current**: REST API with description-based price comparison
+**Next**: WeChat Work integration (see `WEWORK_INTEGRATION_PLAN.md`)
+
+**Timeline**:
+- Stage 1: Dependencies & Configuration (2 hours)
+- Stage 2: Core Service (3-4 hours)
+- Stage 3: Callback Endpoints (3-4 hours)
+- Stage 4: Testing & Documentation (6-8 hours)
+- **Total: 15-20 hours (~1-2 weeks)**
+
+**Key Simplification**: No additional formatting stage needed - existing `query_processor` and `wide_search` already return markdown-formatted text that works perfectly with WeChat Work.
+
+### Benefits for Users
+
+**End Users** (via WeChat Work):
+- Query prices without leaving chat app
+- No training required - natural language
+- Mobile + desktop access
+- Instant responses for common queries
+
+**Administrators** (via REST API):
+- Full analytics and reporting
+- Direct database access
+- Integration capabilities
+- Admin dashboard
+
+### Reference Documents
+
+- `WEWORK_INTEGRATION_PLAN.md` - Detailed implementation task list
+- `README.md` - Updated with WeChat Work overview
+- `.env.example` - WeChat Work configuration template

@@ -47,15 +47,26 @@ def format_success_response(
             "color_type": pricing.color_type,
             "price": float(pricing.price),
         })
-        price_line = f"价格：${float(pricing.price):.2f} USD ({pricing.tier}{pricing.color_type})"
+        try:
+            pv = float(pricing.price)
+        except Exception:
+            pv = None
+        if pv is not None and pv > 0:
+            price_line = f"价格：${pv:.2f} USD ({pricing.tier}{pricing.color_type})"
+        else:
+            price_line = f"价格：不适用 ({pricing.tier}{pricing.color_type})"
     elif all_pricing:
         # Build a compact table for all tiers/colors
         rows = []
         for p in sorted(all_pricing, key=lambda x: (x.tier, x.color_type)):
             try:
-                rows.append(f"- {p.tier}{p.color_type}: ${float(p.price):.2f} USD")
+                pv = float(p.price)
             except Exception:
-                continue
+                pv = None
+            if pv is not None and pv > 0:
+                rows.append(f"- {p.tier}{p.color_type}: ${pv:.2f} USD")
+            else:
+                rows.append(f"- {p.tier}{p.color_type}: 不适用")
         price_line = "\n".join(["价格一览:"] + rows) if rows else "价格：未知"
         # expose structured list in data
         data["prices"] = [

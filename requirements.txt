@@ -25,6 +25,11 @@ passlib[bcrypt]==1.7.4
 # Utilities
 python-dotenv==1.0.0
 
+# WeChat Work integration
+wechatpy==1.8.18
+pycryptodome==3.19.0
+xmltodict==0.13.0
+
 # Testing
 pytest==7.4.3
 pytest-asyncio==0.21.1

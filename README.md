@@ -2,6 +2,10 @@
 
 FastAPI service for Chinese price queries with fuzzy matching, PDF extraction, and a plain admin dashboard.
 
+**Access Modes**:
+- **REST API** (current): Direct HTTP endpoints for integration and admin use
+- **WeChat Work Integration** (planned): Natural language queries via enterprise WeChat chat interface
+
 ## Quickstart
 
 1) Create and fill `.env` from `.env.example` (note `CORS_ORIGINS` must be JSON, e.g. `["*"]`).
@@ -32,6 +36,41 @@ API health check: `GET http://127.0.0.1:8000/api/health`
 
 - Seeder updates:
   - Updates existing `subcategory`、`material_type`、`notes`（包含 highlight 元数据）以便重复导入时修正数据。
+
+## WeChat Work Integration (Planned)
+
+**Overview**: Integrating CostChecker with 企业微信 (WeChat Work) to enable natural language price queries via enterprise chat.
+
+**User Experience**:
+- Users send queries directly in WeChat Work chat: "比 GT10S 便宜的", "儿童分体简易 Silicone 价格"
+- System responds with formatted results including product details, prices, and comparisons
+- Fast queries (< 4s): Instant passive reply
+- Complex queries (≥ 4s): Active message sent after processing
+
+**Architecture**:
+```
+WeChat Work User → Encrypted Message → FastAPI Callback → Query Engine → Response
+                                            ↓
+                                    Existing API Logic (reused)
+```
+
+**Features**:
+- Natural language queries in Chinese (same as REST API)
+- Markdown-formatted responses with product comparisons
+- Message encryption/decryption (WXBizMsgCrypt)
+- Timeout handling (4-second threshold for passive replies)
+- Idempotent message processing
+- Dual interface: WeChat Work for end users, REST API for admin/integrations
+
+**Implementation Timeline**: 15-20 hours (1-2 weeks)
+
+**Status**: See `WEWORK_INTEGRATION_PLAN.md` for detailed implementation roadmap.
+
+**Benefits**:
+- Zero learning curve for non-technical users
+- Accessible via familiar chat interface
+- No separate app installation required
+- Real-time price queries on mobile/desktop
 
 ## Prerequisites
 

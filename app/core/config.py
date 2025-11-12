@@ -22,5 +22,12 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: List[str] = ["*"]
 
+    # WeChat Work (optional; required only if enabling WeWork integration)
+    WEWORK_CORP_ID: Optional[str] = None
+    WEWORK_AGENT_ID: Optional[int] = None
+    WEWORK_SECRET: Optional[str] = None
+    WEWORK_TOKEN: Optional[str] = None
+    WEWORK_ENCODING_AES_KEY: Optional[str] = None
+
 
 settings = Settings()
